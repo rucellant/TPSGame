@@ -26,16 +26,17 @@ protected:
 
 	void Lean(float DeltaTime);
 	void MovementYaw();
+	void TurnInPlace();
 private:
 	// 애님인스턴스 소유 객체
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Shooter", meta = (AllowPrivateAccess = "true"))
 	AShooter* Shooter;
-	// 슈터 스테이트
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Shooter", meta = (AllowPrivateAccess = "true"))
-	EShooterState ShooterState;
 	// 조준
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Shooter", meta = (AllowPrivateAccess = "true"))
 	bool bAiming;
+	// 피치
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Shooter", meta = (AllowPrivateAccess = "true"))
+	float Pitch;
 	// 속력
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Shooter", meta = (AllowPrivateAccess = "true"))
 	float Speed;
@@ -55,4 +56,12 @@ private:
 	float CurMovementOffsetYaw;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Shooter", meta = (AllowPrivateAccess = "true"))
 	float PreMovementOffsetYaw;
+	// TurnInPlace
+	FRotator CurTIPCharacterRotation;
+	FRotator PreTIPCharacterRotation;
+	float PreRotationCurve;
+	float CurRotationCurve;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Shooter", meta = (AllowPrivateAccess = "true"))
+	float RootYawOffset;
+	bool bTurnInPlace;
 };

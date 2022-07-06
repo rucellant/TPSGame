@@ -3,20 +3,22 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Projectile.h"
 #include "Camera/CameraComponent.h"
 #include "Engine/DataTable.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Shooter.generated.h"
 
-UENUM(BlueprintType)
-enum class EShooterState : uint8
-{
-	ESS_Idle UMETA(DisplayNAme = "Idle"),
-	ESS_Jog UMETA(DisplayNAme = "Jog"),
-	
-	ESS_MAX UMETA(DisplayNAme = "DefaultMax")
-};
+// UENUM(BlueprintType)
+// enum class EShooterState : uint8
+// {
+// 	ESS_Idle UMETA(DisplayNAme = "Idle"),
+// 	ESS_Jog UMETA(DisplayNAme = "Jog"),
+// 	ESS_FireWeapon UMETA(DisplayNAme = "FireWeapon"),
+// 	
+// 	ESS_MAX UMETA(DisplayNAme = "DefaultMax")
+// };
 
 UCLASS()
 class TPSGAME_API AShooter : public ACharacter
@@ -33,12 +35,17 @@ protected:
 
 	// bAiming에 따라 바뀌는 것들 설정
 	void TransformByAiming(bool bInput);
-
 	// 카메라붐
 	void TickCameraBoom(float DeltaTime);
-
 	// 총 발사
 	void FireWeapon();
+	// 마우스 누르고 있으면 계속 발사
+	void AutoFireWeapon();
+	// 크로스헤어 벌어지는 정도 계산
+	void CalculateCrosshairSpread(float DeltaTime);
+	// 라인트레이스. 스크린에서 한번. 총구에서 한번. 이거는 일단 OutHitLocation를 구하면 성공
+	bool LineTraceFromScreen(FHitResult& OutHitResult, FVector& OutHitLocation);
+	void LineTraceFromWorld(FVector InStart, FVector InTarget, FHitResult& OutHitResult, FVector& OutHitLocation);
 protected: // 입력
 	void MoveForward(float Value);
 	void MoveRight(float Value);
@@ -59,9 +66,6 @@ public:
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
 private:
-	// 상태
-	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="Shooter",meta=(AllowPrivateAccess="true"))
-	EShooterState ShooterState;
 	// 조준상태
 	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="Shooter",meta=(AllowPrivateAccess="true"))
 	bool bAiming;
@@ -90,6 +94,7 @@ private:
 	bool bFireButtonPressed;
 	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="Shooter",meta=(AllowPrivateAccess="true"))
 	bool bAimingButtonPressed;
+	bool bFiringWeapon;
 	// 마우스 회전 계수들
 	UPROPERTY(VisibleAnywhere,Category="Shooter",meta=(AllowPrivateAccess="true"))
 	float BaseLookUpRate;
@@ -106,7 +111,37 @@ private:
 	// 몽타주들
 	UPROPERTY(EditDefaultsOnly,BlueprintReadWrite,Category="Shooter",meta=(AllowPrivateAccess="true"))
 	UAnimMontage* FireWeaponMontage;
+	UPROPERTY(EditDefaultsOnly,BlueprintReadWrite,Category="Shooter",meta=(AllowPrivateAccess="true"))
+	FName FireWeaponMontageSection;
+	// 타이머들
+	FTimerHandle AutoFireDelayTimer;
+	// 자동 발사 딜레이
+	UPROPERTY(EditDefaultsOnly,BlueprintReadWrite,Category="Shooter",meta=(AllowPrivateAccess="true"))
+	float AutoFireDelayRate;
+	// 크로스헤어 기본 + 총쏠 때 + 이동할 때 + 점프할 때
+	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="Shooter",meta=(AllowPrivateAccess="true"))
+	float CrosshairSpreadMultiplier;
+	UPROPERTY(EditDefaultsOnly,BlueprintReadWrite,Category="Shooter",meta=(AllowPrivateAccess="true"))
+	float CrosshairBaseFactor;
+	float CrosshairVelocityFactor;
+	UPROPERTY(EditDefaultsOnly,BlueprintReadWrite,Category="Shooter",meta=(AllowPrivateAccess="true"))
+	float CrosshairMaxVelocityFactor;
+	float CrosshairInAirFactor;
+	UPROPERTY(EditDefaultsOnly,BlueprintReadWrite,Category="Shooter",meta=(AllowPrivateAccess="true"))
+	float CrosshairMaxInAirFactor;
+	float CrosshairShootingFactor;
+	UPROPERTY(EditDefaultsOnly,BlueprintReadWrite,Category="Shooter",meta=(AllowPrivateAccess="true"))
+	float CrosshairMaxShootingFactor;
+	UPROPERTY(EditDefaultsOnly,BlueprintReadWrite,Category="Shooter",meta=(AllowPrivateAccess="true"))
+	FVector2D CrosshairOffset;
+	// 총구 소켓 이름
+	UPROPERTY(EditDefaultsOnly,BlueprintReadWrite,Category="Shooter",meta=(AllowPrivateAccess="true"))
+	FName BarrelSocketName;
+	// 총알
+	UPROPERTY(EditDefaultsOnly,BlueprintReadWrite,Category="Shooter",meta=(AllowPrivateAccess="true"))
+	TSubclassOf<AProjectile> ProjectileClass;
 public:
 	FORCEINLINE bool GetAiming() const { return bAiming; }
-	FORCEINLINE EShooterState GetShooterState() const { return ShooterState; }
+	FORCEINLINE FVector2D GetCrosshairOffset() const { return CrosshairOffset; }
+	FORCEINLINE float GetCrosshairSpreadMultiplier() const { return CrosshairSpreadMultiplier;}
 };

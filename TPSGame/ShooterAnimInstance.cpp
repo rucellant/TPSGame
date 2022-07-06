@@ -40,9 +40,9 @@ void UShooterAnimInstance::UpdateAnimationProperties(float DeltaTime)
 	{
 		// 조준
 		bAiming = Shooter->GetAiming();
-		
-		// 상태
-		ShooterState = Shooter->GetShooterState();
+
+		// 피치
+		Pitch = Shooter->GetBaseAimRotation().Pitch;
 		
 		// 속도
 		FVector Velocity = Shooter->GetVelocity();
@@ -60,6 +60,9 @@ void UShooterAnimInstance::UpdateAnimationProperties(float DeltaTime)
 
 		// MovementYaw
 		MovementYaw();
+
+		// TurnInPlace
+		TurnInPlace();
 	}
 }
 
@@ -85,6 +88,49 @@ void UShooterAnimInstance::MovementYaw()
 	if(Shooter->GetVelocity().Size() > 0.f)
 	{
 		PreMovementOffsetYaw = CurMovementOffsetYaw;
+	}
+}
+
+void UShooterAnimInstance::TurnInPlace()
+{
+	if(Speed > 0.f || bIsInAir || !bAiming)
+	{
+		RootYawOffset = 0.f;
+		PreRotationCurve = 0.f;
+		CurRotationCurve = 0.f;
+		PreTIPCharacterRotation = CurTIPCharacterRotation;
+		CurTIPCharacterRotation = Shooter->GetActorRotation();
+	}
+	else
+	{
+		PreTIPCharacterRotation = CurTIPCharacterRotation;
+		CurTIPCharacterRotation = Shooter->GetActorRotation();
+		const FRotator RotationDelta = UKismetMathLibrary::NormalizedDeltaRotator(CurTIPCharacterRotation,PreTIPCharacterRotation);
+
+		RootYawOffset = UKismetMathLibrary::NormalizeAxis(RootYawOffset - RotationDelta.Yaw);
+		
+		const float Turning = GetCurveValue(FName("Turning"));
+		if(Turning > 0.f)
+		{
+			bTurnInPlace = true;
+			
+			PreRotationCurve = CurRotationCurve;
+			CurRotationCurve = GetCurveValue(FName("DistanceCurve"));
+			const float RotationCurveDelta = CurRotationCurve - PreRotationCurve;
+
+			RootYawOffset > 0.f ?  RootYawOffset -= RotationCurveDelta : RootYawOffset += RotationCurveDelta;
+
+			const float ABSRootYawOffset = FMath::Abs(RootYawOffset);
+			if(ABSRootYawOffset > 90.f)
+			{
+				const float YawExcess = ABSRootYawOffset - 90.f;
+				RootYawOffset > 0.f ?  RootYawOffset -= YawExcess : RootYawOffset += YawExcess;
+			}
+		}
+		else
+		{
+			bTurnInPlace = false;
+		}
 	}
 }
 

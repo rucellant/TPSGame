@@ -2,13 +2,14 @@
 
 
 #include "Shooter.h"
-
+#include "MeshPassProcessor.h"
+#include "Engine/SkeletalMeshSocket.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMathLibrary.h"
 
 // Sets default values
 AShooter::AShooter():
-ShooterState(EShooterState::ESS_Idle),
 bAiming(false),
 bFireButtonPressed(false),
 bAimingButtonPressed(false)
@@ -84,12 +85,138 @@ void AShooter::TickCameraBoom(float DeltaTime)
 
 void AShooter::FireWeapon()
 {
-	// 1. 애니메이션 재생
+	bFiringWeapon = true;
+	
+	// 애니메이션 재생
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
 	if(FireWeaponMontage && AnimInstance)
 	{
 		AnimInstance->Montage_Play(FireWeaponMontage);
-		AnimInstance->Montage_JumpToSection(FName("FireBase"),FireWeaponMontage);
+		AnimInstance->Montage_JumpToSection(FireWeaponMontageSection,FireWeaponMontage);
+	}
+
+	// 레이트레이싱
+	FHitResult HitResult;
+	FVector HitLocation;
+	if(LineTraceFromScreen(HitResult,HitLocation))
+	{
+		const USkeletalMeshSocket* BarrelSocket = GetMesh()->GetSocketByName(BarrelSocketName);
+		FTransform BarrelSocketTransform = BarrelSocket->GetSocketTransform(GetMesh());
+		FVector BarrelLocation = BarrelSocketTransform.GetLocation();
+		LineTraceFromWorld(BarrelLocation,HitLocation,HitResult,HitLocation);
+
+		// 총알 사출
+		FVector Start = BarrelSocketTransform.GetLocation();
+		FVector End = HitLocation;
+		FVector ProjectileDirection = End - Start; ProjectileDirection.Normalize();
+		FRotator ProjectileRotation = UKismetMathLibrary::MakeRotFromX(ProjectileDirection);
+		AProjectile* Projectile = GetWorld()->SpawnActor<AProjectile>(ProjectileClass,Start,ProjectileRotation);
+		
+		// 총구 화염
+		Projectile->SpawnMuzzleFlash(BarrelSocketTransform);
+	}
+	else
+	{
+		return;
+	}
+	
+	// 타이머 호출
+	GetWorldTimerManager().SetTimer(AutoFireDelayTimer,this,&AShooter::AutoFireWeapon,AutoFireDelayRate);
+}
+
+void AShooter::AutoFireWeapon()
+{
+	if(!bFireButtonPressed)
+	{
+		bFiringWeapon = false;
+		return;
+	}
+	FireWeapon();
+}
+
+void AShooter::CalculateCrosshairSpread(float DeltaTime)
+{
+	// 발사 + 이동 + 점프 + 기본
+
+	// 이동
+	const FVector2D WalkSpeedRange = FVector2D(0.f,GetCharacterMovement()->MaxWalkSpeed);
+	const FVector2D VelocityMultiflierRange = FVector2D(0.f,CrosshairMaxVelocityFactor);
+	FVector Velocity = GetVelocity(); Velocity.Z = 0.f;
+	CrosshairVelocityFactor = FMath::GetMappedRangeValueClamped(WalkSpeedRange,VelocityMultiflierRange,Velocity.Size());
+
+	// 점프
+	if(GetCharacterMovement()->IsFalling())
+	{
+		CrosshairInAirFactor = FMath::FInterpTo(CrosshairInAirFactor,CrosshairMaxInAirFactor,DeltaTime,2.25f);
+	}
+	else
+	{
+		CrosshairInAirFactor = FMath::FInterpTo(CrosshairInAirFactor,0,DeltaTime,30.f);
+	}
+
+	// 발사
+	if(bFiringWeapon)
+	{
+		CrosshairShootingFactor = FMath::FInterpTo(CrosshairShootingFactor,CrosshairMaxShootingFactor,DeltaTime,60.f);
+	}
+	else
+	{
+		CrosshairShootingFactor = FMath::FInterpTo(CrosshairShootingFactor,0,DeltaTime,60.f);
+	}
+
+	CrosshairSpreadMultiplier = CrosshairBaseFactor +
+		CrosshairVelocityFactor +
+			CrosshairInAirFactor +
+				CrosshairShootingFactor;
+}
+
+bool AShooter::LineTraceFromScreen(FHitResult& OutHitResult, FVector& OutHitLocation)
+{
+	FVector2D ViewportSize;
+	if(GEngine && GEngine->GameViewport)
+	{
+		GEngine->GameViewport->GetViewportSize(ViewportSize);
+	}
+
+	FVector2D CrosshairLocation = FVector2D(ViewportSize.X * 0.5f, ViewportSize.Y * 0.5f) + CrosshairOffset;
+	FVector CrosshairWorldLocation, CrosshairWorldDirection;
+	bool bScreenToWorld = UGameplayStatics::DeprojectScreenToWorld(UGameplayStatics::GetPlayerController(this,0),
+		CrosshairLocation,
+		CrosshairWorldLocation,
+		CrosshairWorldDirection);
+
+	if(!bScreenToWorld) return false;
+	
+	FVector Start = CrosshairWorldLocation;
+	FVector End = CrosshairWorldLocation + CrosshairWorldDirection * 50'000.f;
+	GetWorld()->LineTraceSingleByChannel(OutHitResult,Start,End,ECollisionChannel::ECC_Visibility);
+
+	if(OutHitResult.bBlockingHit)
+	{
+		OutHitLocation = OutHitResult.Location;
+		return true;
+	}
+	else
+	{
+		OutHitLocation = End;
+		return true;
+	}
+}
+
+void AShooter::LineTraceFromWorld(FVector InStart, FVector InTarget, FHitResult& OutHitResult, FVector& OutHitLocation)
+{
+	FVector Start = InStart;
+	FVector Direction = InTarget - Start;
+	FVector End = Start + Direction * 1.25f; 
+	GetWorld()->LineTraceSingleByChannel(OutHitResult,Start,End,ECollisionChannel::ECC_Visibility);
+
+	if(OutHitResult.bBlockingHit)
+	{
+		OutHitLocation = OutHitResult.Location;
+	}
+	else
+	{
+		OutHitLocation = InTarget;
 	}
 }
 
@@ -146,7 +273,6 @@ void AShooter::LookUp(float Value)
 void AShooter::FireButtonPressed()
 {
 	bFireButtonPressed = true;
-
 	FireWeapon();
 }
 
@@ -184,6 +310,8 @@ void AShooter::Tick(float DeltaTime)
 
 	// 카메라붐
 	TickCameraBoom(DeltaTime);
+	// 크로스헤어
+	CalculateCrosshairSpread(DeltaTime);
 }
 
 // Called to bind functionality to input
