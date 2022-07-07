@@ -3,8 +3,11 @@
 
 #include "Projectile.h"
 
+#include "Shooter.h"
+#include "TPSGame.h"
 #include "Kismet/GameplayStatics.h"
 #include "Particles/ParticleSystemComponent.h"
+#include "PhysicalMaterials/PhysicalMaterial.h"
 
 // Sets default values
 AProjectile::AProjectile()
@@ -68,12 +71,58 @@ void AProjectile::BeginPlay()
 	// BulletParticle
 	BulletParticleSystemComponent->SetTemplate(BulletParticleSystemAsset);
 	// 타이머 함수 호출
+	FTimerHandle TimerHandle;
 	GetWorldTimerManager().SetTimer(TimerHandle,this,&AProjectile::Suicide,MaxLifeTime);
+	// 충돌
+	SphereBox->OnComponentBeginOverlap.AddDynamic(this,&AProjectile::SphereBoxBeginOverlap);
+	SphereBox->OnComponentHit.AddDynamic(this,&AProjectile::SphereBoxHit);
+	SphereBox->BodyInstance.SetCollisionProfileName(CollisionProfileName);
 }
 
 void AProjectile::Suicide()
 {
 	Destroy();
+}
+
+void AProjectile::SphereBoxBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
+	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+	if(ProjectileType == EProjectileType::EPT_ShooterBase)
+	{
+		AShooter* Shooter = Cast<AShooter>(OtherActor);
+		if(Shooter) return;
+
+		Shooter = Cast<AShooter>(UGameplayStatics::GetPlayerPawn(this,0));
+		if(Shooter == nullptr) return;
+		
+		FTransform Transform = FTransform(Shooter->GetBaseAimRotation(),GetActorLocation(),GetActorScale3D());
+		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(),Impacts[0],Transform);
+
+		Destroy();
+	}
+}
+
+void AProjectile::SphereBoxHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp,
+	FVector NormalImpulse, const FHitResult& Hit)
+{
+	if(ProjectileType == EProjectileType::EPT_ShooterBase)
+	{
+		AShooter* Shooter = Cast<AShooter>(UGameplayStatics::GetPlayerPawn(this,0));
+		if(Shooter == nullptr) return;
+		
+		if(UPhysicalMaterial::DetermineSurfaceType(Hit.PhysMaterial.Get()) == EPS_Water)
+		{
+			FTransform Transform = FTransform(Shooter->GetBaseAimRotation(),Hit.Location,GetActorScale3D());
+			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(),Impacts[2],Transform);
+		}
+		else
+		{
+			FTransform Transform = FTransform(Shooter->GetBaseAimRotation(),Hit.Location,GetActorScale3D());
+			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(),Impacts[1],Transform);	
+		}
+
+		Destroy();
+	}
 }
 
 // Called every frame

@@ -12,7 +12,9 @@
 AShooter::AShooter():
 bAiming(false),
 bFireButtonPressed(false),
-bAimingButtonPressed(false)
+bAimingButtonPressed(false),
+bUltButtonPressed(false),
+bUltActivated(false)
 {
  	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
@@ -39,6 +41,12 @@ void AShooter::BeginPlay()
 
 	// 에이밍 모드에 따른 변환을 초기화
 	TransformByAiming(bAiming);
+
+	// 체력
+	CurHealth = MaxHealth;
+	CurShield = 0.f;
+	// 궁극기 게이지
+	CurUltGauge = 0.f;
 }
 
 void AShooter::TransformByAiming(bool bInput)
@@ -85,6 +93,8 @@ void AShooter::TickCameraBoom(float DeltaTime)
 
 void AShooter::FireWeapon()
 {
+	if(!bAiming) return;
+	
 	bFiringWeapon = true;
 	
 	// 애니메이션 재생
@@ -106,7 +116,7 @@ void AShooter::FireWeapon()
 		LineTraceFromWorld(BarrelLocation,HitLocation,HitResult,HitLocation);
 
 		// 총알 사출
-		FVector Start = BarrelSocketTransform.GetLocation();
+		FVector Start = BarrelLocation;
 		FVector End = HitLocation;
 		FVector ProjectileDirection = End - Start; ProjectileDirection.Normalize();
 		FRotator ProjectileRotation = UKismetMathLibrary::MakeRotFromX(ProjectileDirection);
@@ -184,11 +194,11 @@ bool AShooter::LineTraceFromScreen(FHitResult& OutHitResult, FVector& OutHitLoca
 		CrosshairLocation,
 		CrosshairWorldLocation,
 		CrosshairWorldDirection);
-
+	
 	if(!bScreenToWorld) return false;
 	
 	FVector Start = CrosshairWorldLocation;
-	FVector End = CrosshairWorldLocation + CrosshairWorldDirection * 50'000.f;
+	FVector End = Start + CrosshairWorldDirection * 50'000.f;
 	GetWorld()->LineTraceSingleByChannel(OutHitResult,Start,End,ECollisionChannel::ECC_Visibility);
 
 	if(OutHitResult.bBlockingHit)
@@ -216,7 +226,17 @@ void AShooter::LineTraceFromWorld(FVector InStart, FVector InTarget, FHitResult&
 	}
 	else
 	{
-		OutHitLocation = InTarget;
+		OutHitLocation = End;
+	}
+}
+
+void AShooter::TickUltGauge(float DeltaTime)
+{
+	if(!bUltActivated)
+	{
+		if(CurUltGauge >= MaxUltGauge) return;
+
+		CurUltGauge += (DeltaTime * (MaxUltGauge / UltGageFactor));
 	}
 }
 
@@ -273,7 +293,11 @@ void AShooter::LookUp(float Value)
 void AShooter::FireButtonPressed()
 {
 	bFireButtonPressed = true;
-	FireWeapon();
+
+	if(bAiming)
+	{
+		FireWeapon();	
+	}
 }
 
 void AShooter::FireButtonReleased()
@@ -293,9 +317,21 @@ void AShooter::AimingButtonReleased()
 	bAimingButtonPressed = false;
 }
 
+void AShooter::UltButtonPressed()
+{
+	bUltButtonPressed = true;
+}
+
+void AShooter::UltButtonReleased()
+{
+	bUltButtonPressed = false;
+}
+
 void AShooter::Jump()
 {
 	Super::Jump();
+
+	TransformByAiming(false);
 }
 
 void AShooter::StopJumping()
@@ -312,6 +348,8 @@ void AShooter::Tick(float DeltaTime)
 	TickCameraBoom(DeltaTime);
 	// 크로스헤어
 	CalculateCrosshairSpread(DeltaTime);
+	// 궁극기 게이지
+	TickUltGauge(DeltaTime);
 }
 
 // Called to bind functionality to input
@@ -329,6 +367,9 @@ void AShooter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 
 	PlayerInputComponent->BindAction(FName("AimingButton"),EInputEvent::IE_Pressed,this,&AShooter::AimingButtonPressed);
 	PlayerInputComponent->BindAction(FName("AimingButton"),EInputEvent::IE_Released,this,&AShooter::AimingButtonReleased);
+
+	PlayerInputComponent->BindAction(FName("UltButton"),EInputEvent::IE_Pressed,this,&AShooter::UltButtonPressed);
+	PlayerInputComponent->BindAction(FName("UltButton"),EInputEvent::IE_Released,this,&AShooter::UltButtonReleased);
 	
 	PlayerInputComponent->BindAction(FName("Jump"),EInputEvent::IE_Pressed,this,&AShooter::Jump);
 	PlayerInputComponent->BindAction(FName("Jump"),EInputEvent::IE_Released,this,&AShooter::StopJumping);

@@ -46,6 +46,7 @@ protected:
 	// 라인트레이스. 스크린에서 한번. 총구에서 한번. 이거는 일단 OutHitLocation를 구하면 성공
 	bool LineTraceFromScreen(FHitResult& OutHitResult, FVector& OutHitLocation);
 	void LineTraceFromWorld(FVector InStart, FVector InTarget, FHitResult& OutHitResult, FVector& OutHitLocation);
+	void TickUltGauge(float DeltaTime);
 protected: // 입력
 	void MoveForward(float Value);
 	void MoveRight(float Value);
@@ -55,6 +56,8 @@ protected: // 입력
 	void FireButtonReleased();
 	void AimingButtonPressed();
 	void AimingButtonReleased();
+	void UltButtonPressed();
+	void UltButtonReleased();
 	virtual void Jump() override;
 	virtual void StopJumping() override;
 	
@@ -140,8 +143,38 @@ private:
 	// 총알
 	UPROPERTY(EditDefaultsOnly,BlueprintReadWrite,Category="Shooter",meta=(AllowPrivateAccess="true"))
 	TSubclassOf<AProjectile> ProjectileClass;
+	// 체력
+	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="Shooter",meta=(AllowPrivateAccess="true"))
+	float CurHealth;
+	UPROPERTY(EditDefaultsOnly,BlueprintReadOnly,Category="Shooter",meta=(AllowPrivateAccess="true"))
+	float MaxHealth;
+	// 쉴드
+	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="Shooter",meta=(AllowPrivateAccess="true"))
+	float CurShield;
+	UPROPERTY(EditDefaultsOnly,BlueprintReadOnly,Category="Shooter",meta=(AllowPrivateAccess="true"))
+	float MaxShield;
+	// 궁극기
+	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="Shooter",meta=(AllowPrivateAccess="true"))
+	float CurUltGauge;
+	UPROPERTY(EditDefaultsOnly,BlueprintReadOnly,Category="Shooter",meta=(AllowPrivateAccess="true"))
+	float MaxUltGauge;
+	// 궁극기 게이지 다 차는 시간, 초단위임 5 -> 5초만에 100프로
+	UPROPERTY(EditDefaultsOnly,BlueprintReadOnly,Category="Shooter",meta=(AllowPrivateAccess="true"))
+	float UltGageFactor;
+	bool bUltButtonPressed;
+	bool bUltActivated;
 public:
 	FORCEINLINE bool GetAiming() const { return bAiming; }
 	FORCEINLINE FVector2D GetCrosshairOffset() const { return CrosshairOffset; }
-	FORCEINLINE float GetCrosshairSpreadMultiplier() const { return CrosshairSpreadMultiplier;}
+	FORCEINLINE float GetCrosshairSpreadMultiplier() const { return CrosshairSpreadMultiplier; }
+	UFUNCTION(BlueprintCallable)
+	void IncrementHealth(float Value) { CurHealth += Value; }
+	UFUNCTION(BlueprintCallable)
+	void DecrementHealth(float Value) { CurHealth -= Value; }
+	UFUNCTION(BlueprintCallable)
+	void IncrementShield(float Value) { CurShield += Value; }
+	UFUNCTION(BlueprintCallable)
+	void DecrementShield(float Value) { CurShield -= Value; }
+	UFUNCTION(BlueprintCallable)
+	float GetUltGauge() const { return CurUltGauge; }
 };

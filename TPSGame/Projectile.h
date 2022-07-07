@@ -62,6 +62,20 @@ protected:
 	virtual void BeginPlay() override;
 
 	void Suicide();
+
+	UFUNCTION()
+	void SphereBoxBeginOverlap(UPrimitiveComponent* OverlappedComponent,
+		AActor* OtherActor,
+		UPrimitiveComponent* OtherComp,
+		int32 OtherBodyIndex,
+		bool bFromSweep,
+		const FHitResult & SweepResult);
+	UFUNCTION()
+	void SphereBoxHit(UPrimitiveComponent* HitComponent,
+		AActor* OtherActor,
+		UPrimitiveComponent* OtherComp,
+		FVector NormalImpulse,
+		const FHitResult& Hit );
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
@@ -106,6 +120,7 @@ private:
 	// 데미지
 	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="Projectile",meta=(AllowPrivateAccess="true"))
 	float Damage;
-	// 타이머핸들
-	FTimerHandle TimerHandle;
+	// 콜리전 프로필
+	UPROPERTY(EditDefaultsOnly,BlueprintReadWrite,Category="Projectile",meta=(AllowPrivateAccess="true"))
+	FName CollisionProfileName;
 };
