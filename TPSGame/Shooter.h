@@ -47,6 +47,11 @@ protected:
 	bool LineTraceFromScreen(FHitResult& OutHitResult, FVector& OutHitLocation);
 	void LineTraceFromWorld(FVector InStart, FVector InTarget, FHitResult& OutHitResult, FVector& OutHitLocation);
 	void TickUltGauge(float DeltaTime);
+	// 궁극기 활성화
+	void ActivateUlt();
+	// 타이머로 호출할 궁극기 이펙트 관련 함수들
+	void BodyHologramLeftoverActiavte();
+	void BodyHologramLeftoverDeactiavte();
 protected: // 입력
 	void MoveForward(float Value);
 	void MoveRight(float Value);
@@ -60,7 +65,6 @@ protected: // 입력
 	void UltButtonReleased();
 	virtual void Jump() override;
 	virtual void StopJumping() override;
-	
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
@@ -68,6 +72,8 @@ public:
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
+	UFUNCTION(BlueprintCallable)
+	void SpawnVentEmitter();
 private:
 	// 조준상태
 	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="Shooter",meta=(AllowPrivateAccess="true"))
@@ -115,12 +121,22 @@ private:
 	UPROPERTY(EditDefaultsOnly,BlueprintReadWrite,Category="Shooter",meta=(AllowPrivateAccess="true"))
 	UAnimMontage* FireWeaponMontage;
 	UPROPERTY(EditDefaultsOnly,BlueprintReadWrite,Category="Shooter",meta=(AllowPrivateAccess="true"))
-	FName FireWeaponMontageSection;
+	FName FireWeaponMontageBaseSection;
+	UPROPERTY(EditDefaultsOnly,BlueprintReadWrite,Category="Shooter",meta=(AllowPrivateAccess="true"))
+	FName FireWeaponMontageUltSection;
+	UPROPERTY(EditDefaultsOnly,BlueprintReadWrite,Category="Shooter",meta=(AllowPrivateAccess="true"))
+	UAnimMontage* ActivateUltMontage;
+	UPROPERTY(EditDefaultsOnly,BlueprintReadWrite,Category="Shooter",meta=(AllowPrivateAccess="true"))
+	FName ActivateUltMontageSection;
+	UPROPERTY(EditDefaultsOnly,BlueprintReadWrite,Category="Shooter",meta=(AllowPrivateAccess="true"))
+	FName DeactivateUltMontageSection;
 	// 타이머들
 	FTimerHandle AutoFireDelayTimer;
 	// 자동 발사 딜레이
 	UPROPERTY(EditDefaultsOnly,BlueprintReadWrite,Category="Shooter",meta=(AllowPrivateAccess="true"))
-	float AutoFireDelayRate;
+	float AutoFireBaseDelayRate;
+	UPROPERTY(EditDefaultsOnly,BlueprintReadWrite,Category="Shooter",meta=(AllowPrivateAccess="true"))
+	float AutoFireUltDelayRate;
 	// 크로스헤어 기본 + 총쏠 때 + 이동할 때 + 점프할 때
 	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="Shooter",meta=(AllowPrivateAccess="true"))
 	float CrosshairSpreadMultiplier;
@@ -142,7 +158,9 @@ private:
 	FName BarrelSocketName;
 	// 총알
 	UPROPERTY(EditDefaultsOnly,BlueprintReadWrite,Category="Shooter",meta=(AllowPrivateAccess="true"))
-	TSubclassOf<AProjectile> ProjectileClass;
+	TSubclassOf<AProjectile> BaseProjectileClass;
+	UPROPERTY(EditDefaultsOnly,BlueprintReadWrite,Category="Shooter",meta=(AllowPrivateAccess="true"))
+	TSubclassOf<AProjectile> UltProjectileClass;
 	// 체력
 	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="Shooter",meta=(AllowPrivateAccess="true"))
 	float CurHealth;
@@ -163,6 +181,15 @@ private:
 	float UltGageFactor;
 	bool bUltButtonPressed;
 	bool bUltActivated;
+	// 파티클들
+	UPROPERTY(EditDefaultsOnly,BlueprintReadOnly,Category="Shooter",meta=(AllowPrivateAccess="true"))
+	UParticleSystemComponent* GunDashbardParticleSystemComponent;
+	UPROPERTY(EditDefaultsOnly,BlueprintReadOnly,Category="Shooter",meta=(AllowPrivateAccess="true"))
+	UParticleSystemComponent* BodyHologramParticleSystemComponent;
+	UPROPERTY(EditDefaultsOnly,BlueprintReadOnly,Category="Shooter",meta=(AllowPrivateAccess="true"))
+	UParticleSystemComponent* BodyHologramLeftoverParticleSystemComponent;
+	UPROPERTY(EditDefaultsOnly,BlueprintReadOnly,Category="Shooter",meta=(AllowPrivateAccess="true"))
+	UParticleSystem* VentParticleSystem;
 public:
 	FORCEINLINE bool GetAiming() const { return bAiming; }
 	FORCEINLINE FVector2D GetCrosshairOffset() const { return CrosshairOffset; }
@@ -177,4 +204,5 @@ public:
 	void DecrementShield(float Value) { CurShield -= Value; }
 	UFUNCTION(BlueprintCallable)
 	float GetUltGauge() const { return CurUltGauge; }
+	bool GetUltActivated() const { return bUltActivated; }
 };

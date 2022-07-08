@@ -87,7 +87,7 @@ void AProjectile::Suicide()
 void AProjectile::SphereBoxBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
 	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-	if(ProjectileType == EProjectileType::EPT_ShooterBase)
+	if(ProjectileType == EProjectileType::EPT_ShooterBase || ProjectileType == EProjectileType::EPT_ShooterUlt)
 	{
 		AShooter* Shooter = Cast<AShooter>(OtherActor);
 		if(Shooter) return;
@@ -105,7 +105,7 @@ void AProjectile::SphereBoxBeginOverlap(UPrimitiveComponent* OverlappedComponent
 void AProjectile::SphereBoxHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp,
 	FVector NormalImpulse, const FHitResult& Hit)
 {
-	if(ProjectileType == EProjectileType::EPT_ShooterBase)
+	if(ProjectileType == EProjectileType::EPT_ShooterBase || ProjectileType == EProjectileType::EPT_ShooterUlt)
 	{
 		AShooter* Shooter = Cast<AShooter>(UGameplayStatics::GetPlayerPawn(this,0));
 		if(Shooter == nullptr) return;

@@ -7,6 +7,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "Particles/ParticleSystemComponent.h"
 
 // Sets default values
 AShooter::AShooter():
@@ -28,6 +29,19 @@ bUltActivated(false)
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
 	FollowCamera->SetupAttachment(CameraBoom,USpringArmComponent::SocketName);
 	FollowCamera->bUsePawnControlRotation = false;
+	
+	// 파티클
+	GunDashbardParticleSystemComponent = CreateDefaultSubobject<UParticleSystemComponent>(TEXT("GunDashbardParticleSystem"));
+	GunDashbardParticleSystemComponent->AttachToComponent(GetMesh(),FAttachmentTransformRules::KeepRelativeTransform,FName("GunDashboardSocket"));
+	GunDashbardParticleSystemComponent->SetAutoActivate(false);
+	
+	BodyHologramParticleSystemComponent = CreateDefaultSubobject<UParticleSystemComponent>(TEXT("BodyHologramParticleSystem"));
+	BodyHologramParticleSystemComponent->AttachToComponent(GetMesh(),FAttachmentTransformRules::KeepRelativeTransform,FName("BodyHologramSocket"));
+	BodyHologramParticleSystemComponent->SetAutoActivate(false);
+
+	BodyHologramLeftoverParticleSystemComponent = CreateDefaultSubobject<UParticleSystemComponent>(TEXT("BodyHologramLeftoverParticleSystem"));
+	BodyHologramLeftoverParticleSystemComponent->AttachToComponent(GetMesh(),FAttachmentTransformRules::KeepRelativeTransform,FName("BodyHologramLeftoverSocket"));
+	BodyHologramLeftoverParticleSystemComponent->SetAutoActivate(false);
 }
 
 // Called when the game starts or when spawned
@@ -101,8 +115,16 @@ void AShooter::FireWeapon()
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
 	if(FireWeaponMontage && AnimInstance)
 	{
-		AnimInstance->Montage_Play(FireWeaponMontage);
-		AnimInstance->Montage_JumpToSection(FireWeaponMontageSection,FireWeaponMontage);
+		if(bUltActivated)
+		{
+			AnimInstance->Montage_Play(FireWeaponMontage);
+			AnimInstance->Montage_JumpToSection(FireWeaponMontageUltSection,FireWeaponMontage);
+		}
+		else
+		{
+			AnimInstance->Montage_Play(FireWeaponMontage);
+			AnimInstance->Montage_JumpToSection(FireWeaponMontageBaseSection,FireWeaponMontage);
+		}
 	}
 
 	// 레이트레이싱
@@ -120,10 +142,18 @@ void AShooter::FireWeapon()
 		FVector End = HitLocation;
 		FVector ProjectileDirection = End - Start; ProjectileDirection.Normalize();
 		FRotator ProjectileRotation = UKismetMathLibrary::MakeRotFromX(ProjectileDirection);
-		AProjectile* Projectile = GetWorld()->SpawnActor<AProjectile>(ProjectileClass,Start,ProjectileRotation);
-		
-		// 총구 화염
-		Projectile->SpawnMuzzleFlash(BarrelSocketTransform);
+		if(bUltActivated)
+		{
+			AProjectile* Projectile = GetWorld()->SpawnActor<AProjectile>(UltProjectileClass,Start,ProjectileRotation);
+			// 총구 화염
+			Projectile->SpawnMuzzleFlash(BarrelSocketTransform);
+		}
+		else
+		{
+			AProjectile* Projectile = GetWorld()->SpawnActor<AProjectile>(BaseProjectileClass,Start,ProjectileRotation);
+			// 총구 화염
+			Projectile->SpawnMuzzleFlash(BarrelSocketTransform);
+		}
 	}
 	else
 	{
@@ -131,7 +161,14 @@ void AShooter::FireWeapon()
 	}
 	
 	// 타이머 호출
-	GetWorldTimerManager().SetTimer(AutoFireDelayTimer,this,&AShooter::AutoFireWeapon,AutoFireDelayRate);
+	if(bUltActivated)
+	{
+		GetWorldTimerManager().SetTimer(AutoFireDelayTimer,this,&AShooter::AutoFireWeapon,AutoFireUltDelayRate);	
+	}
+	else
+	{
+		GetWorldTimerManager().SetTimer(AutoFireDelayTimer,this,&AShooter::AutoFireWeapon,AutoFireBaseDelayRate);
+	}
 }
 
 void AShooter::AutoFireWeapon()
@@ -238,6 +275,59 @@ void AShooter::TickUltGauge(float DeltaTime)
 
 		CurUltGauge += (DeltaTime * (MaxUltGauge / UltGageFactor));
 	}
+	else
+	{
+		if(CurUltGauge <= 0.f)
+		{
+			bUltActivated = !bUltActivated;
+
+			UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+			if(AnimInstance && ActivateUltMontage)
+			{
+				AnimInstance->Montage_Play(ActivateUltMontage);
+				AnimInstance->Montage_JumpToSection(DeactivateUltMontageSection,ActivateUltMontage);
+			}
+
+			GunDashbardParticleSystemComponent->Deactivate();
+			BodyHologramParticleSystemComponent->Deactivate();
+		}
+		else
+		{
+			CurUltGauge -= (DeltaTime * (MaxUltGauge / UltGageFactor));
+		}
+	}
+}
+
+void AShooter::ActivateUlt()
+{
+	if(CurUltGauge < MaxUltGauge) return;
+	
+	bUltActivated = true;
+
+	// 애니메이션 재생
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if(ActivateUltMontage && AnimInstance)
+	{
+		AnimInstance->Montage_Play(ActivateUltMontage);
+		AnimInstance->Montage_JumpToSection(ActivateUltMontageSection,ActivateUltMontage);
+	}
+	
+	GunDashbardParticleSystemComponent->Activate();
+	BodyHologramParticleSystemComponent->Activate();
+	FTimerHandle BodyHologramLeftoverTimer;
+	GetWorldTimerManager().SetTimer(BodyHologramLeftoverTimer,this,&AShooter::BodyHologramLeftoverActiavte,1.0);
+}
+
+void AShooter::BodyHologramLeftoverActiavte()
+{
+	BodyHologramLeftoverParticleSystemComponent->Activate();
+	FTimerHandle BodyHologramLeftoverTimer;
+	GetWorldTimerManager().SetTimer(BodyHologramLeftoverTimer,this,&AShooter::BodyHologramLeftoverDeactiavte,1.0);
+}
+
+void AShooter::BodyHologramLeftoverDeactiavte()
+{
+	BodyHologramLeftoverParticleSystemComponent->Deactivate();
 }
 
 void AShooter::MoveForward(float Value)
@@ -320,6 +410,8 @@ void AShooter::AimingButtonReleased()
 void AShooter::UltButtonPressed()
 {
 	bUltButtonPressed = true;
+
+	ActivateUlt();
 }
 
 void AShooter::UltButtonReleased()
@@ -373,5 +465,18 @@ void AShooter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 	
 	PlayerInputComponent->BindAction(FName("Jump"),EInputEvent::IE_Pressed,this,&AShooter::Jump);
 	PlayerInputComponent->BindAction(FName("Jump"),EInputEvent::IE_Released,this,&AShooter::StopJumping);
+}
+
+void AShooter::SpawnVentEmitter()
+{
+	const USkeletalMeshSocket* RightVentEmitterSocket = GetMesh()->GetSocketByName(FName("RightVentEmitterSocket"));
+
+	FTransform RightVentEmitterTransform = RightVentEmitterSocket->GetSocketTransform(GetMesh());
+	UGameplayStatics::SpawnEmitterAtLocation(GetWorld(),VentParticleSystem,RightVentEmitterTransform);
+
+	const USkeletalMeshSocket* LeftVentEmitterSocket = GetMesh()->GetSocketByName(FName("LeftVentEmitterSocket"));
+
+	FTransform LeftVentEmitterTransform = LeftVentEmitterSocket->GetSocketTransform(GetMesh());
+	UGameplayStatics::SpawnEmitterAtLocation(GetWorld(),VentParticleSystem,LeftVentEmitterTransform);	
 }
 

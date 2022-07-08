@@ -55,6 +55,9 @@ void UShooterAnimInstance::UpdateAnimationProperties(float DeltaTime)
 		// 가속도
 		bIsAccelerating = Shooter->GetCharacterMovement()->GetCurrentAcceleration().Size() > 0.f ? true : false;
 
+		// 궁극기
+		bUltActivated = Shooter->GetUltActivated();
+		
 		// Lean
 		Lean(DeltaTime);
 

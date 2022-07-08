@@ -64,4 +64,7 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Shooter", meta = (AllowPrivateAccess = "true"))
 	float RootYawOffset;
 	bool bTurnInPlace;
+	// 궁극기
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Shooter", meta = (AllowPrivateAccess = "true"))
+	bool bUltActivated;
 };
