@@ -6,6 +6,7 @@
 #include "Item.h"
 #include "Components/PointLightComponent.h"
 #include "Components/SphereComponent.h"
+#include "Components/WidgetComponent.h"
 #include "Engine/DataTable.h"
 #include "PickUp.generated.h"
 
@@ -32,6 +33,9 @@ struct FPickUpDataTable : public FTableRowBase
 
 	UPROPERTY(EditAnywhere,BlueprintReadWrite)
 	FLinearColor PointLightColor;
+
+	UPROPERTY(EditAnywhere,BlueprintReadWrite)
+	FName PickUpName;
 };
 /**
  * 
@@ -81,7 +85,13 @@ private:
 	UPROPERTY(EditDefaultsOnly,BlueprintReadOnly,Category="PickUp",meta=(AllowPrivateAccess="true"))
 	UPointLightComponent* PointLight;
 	// 라이트 컬러
+	UPROPERTY(EditDefaultsOnly,BlueprintReadOnly,Category="PickUp",meta=(AllowPrivateAccess="true"))
 	FLinearColor PointLightColor;
+	// 포션 이름
+	UPROPERTY(EditDefaultsOnly,BlueprintReadOnly,Category="PickUp",meta=(AllowPrivateAccess="true"))
+	UWidgetComponent* PickUpNameWidget;
+	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="PickUp",meta=(AllowPrivateAccess="true"))
+	FName PickUpName;
 private:
 	// 회복량
 	UPROPERTY(EditDefaultsOnly,BlueprintReadOnly,Category="PickUp",meta=(AllowPrivateAccess="true"))

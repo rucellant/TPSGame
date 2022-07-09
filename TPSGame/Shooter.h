@@ -52,6 +52,9 @@ protected:
 	// 타이머로 호출할 궁극기 이펙트 관련 함수들
 	void BodyHologramLeftoverActiavte();
 	void BodyHologramLeftoverDeactiavte();
+	// 서서히 체력 회복
+	void TickHealthRecovery(float DeltaTime);
+	void TickShieldRecovery(float DeltaTime);
 protected: // 입력
 	void MoveForward(float Value);
 	void MoveRight(float Value);
@@ -166,11 +169,19 @@ private:
 	float CurHealth;
 	UPROPERTY(EditDefaultsOnly,BlueprintReadOnly,Category="Shooter",meta=(AllowPrivateAccess="true"))
 	float MaxHealth;
+	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="Shooter",meta=(AllowPrivateAccess="true"))
+	float TargetHealth;
+	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="Shooter",meta=(AllowPrivateAccess="true"))
+	bool bHealthRecovery;
 	// 쉴드
 	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="Shooter",meta=(AllowPrivateAccess="true"))
 	float CurShield;
 	UPROPERTY(EditDefaultsOnly,BlueprintReadOnly,Category="Shooter",meta=(AllowPrivateAccess="true"))
 	float MaxShield;
+	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="Shooter",meta=(AllowPrivateAccess="true"))
+	float TargetShield;
+	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="Shooter",meta=(AllowPrivateAccess="true"))
+	bool bShieldRecovery;
 	// 궁극기
 	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="Shooter",meta=(AllowPrivateAccess="true"))
 	float CurUltGauge;
@@ -205,4 +216,6 @@ public:
 	UFUNCTION(BlueprintCallable)
 	float GetUltGauge() const { return CurUltGauge; }
 	bool GetUltActivated() const { return bUltActivated; }
+	void IncrementHealthStepByStep(float Value);
+	void IncrementShieldStepByStep(float Value);
 };

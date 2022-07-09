@@ -16,6 +16,9 @@ APickUp::APickUp()
 	// 포인트라이트
 	PointLight = CreateDefaultSubobject<UPointLightComponent>(TEXT("PointLight"));
 	PointLight->SetupAttachment(PickUpMesh);
+	// 위젯
+	PickUpNameWidget = CreateDefaultSubobject<UWidgetComponent>(TEXT("PickUpNameWidget"));
+	PickUpNameWidget->SetupAttachment(GetRootComponent());
 }
 
 void APickUp::BeginPlay()
@@ -33,6 +36,8 @@ void APickUp::BeginPlay()
 			MaterialInstance = PickUpDataTableRow->MaterialInstance;
 
 			PointLightColor = PickUpDataTableRow->PointLightColor;
+
+			PickUpName = PickUpDataTableRow->PickUpName;
 		}
 	}
 
@@ -44,6 +49,9 @@ void APickUp::BeginPlay()
 
 	// 포인트라이트 색
 	PointLight->SetLightColor(PointLightColor);
+	
+	// 픽업 위젯
+	PickUpNameWidget->SetVisibility(true);
 }
 
 void APickUp::SphereBoxBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
@@ -55,10 +63,10 @@ void APickUp::SphereBoxBeginOverlap(UPrimitiveComponent* OverlappedComponent, AA
 	switch (PickUpType)
 	{
 	case EPickUpType::EPT_HealthPotion:
-		Shooter->IncrementHealth(IncrementRate);
+		Shooter->IncrementHealthStepByStep(IncrementRate);
 		break;
 	case EPickUpType::EPT_ShieldPotion:
-		Shooter->IncrementShield(IncrementRate);
+		Shooter->IncrementShieldStepByStep(IncrementRate);
 		break;
 	case EPickUpType::EPT_BothPotion:
 		Shooter->IncrementHealth(IncrementRate);

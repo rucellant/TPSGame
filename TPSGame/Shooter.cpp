@@ -56,9 +56,13 @@ void AShooter::BeginPlay()
 	// 에이밍 모드에 따른 변환을 초기화
 	TransformByAiming(bAiming);
 
-	// 체력
+	// 체력 / 쉴드
 	CurHealth = MaxHealth;
 	CurShield = 0.f;
+	TargetHealth = 0.f;
+	TargetShield = 0.f;
+	bHealthRecovery = false;
+	bShieldRecovery = false;
 	// 궁극기 게이지
 	CurUltGauge = 0.f;
 }
@@ -330,6 +334,32 @@ void AShooter::BodyHologramLeftoverDeactiavte()
 	BodyHologramLeftoverParticleSystemComponent->Deactivate();
 }
 
+void AShooter::TickHealthRecovery(float DeltaTime)
+{
+	if(!bHealthRecovery) return;
+
+	CurHealth = FMath::FInterpTo(CurHealth,TargetHealth,DeltaTime,2.f);
+
+	if(CurHealth >= TargetHealth)
+	{
+		TargetHealth = 0.f;
+		bHealthRecovery = false;
+	}
+}
+
+void AShooter::TickShieldRecovery(float DeltaTime)
+{
+	if(!bShieldRecovery) return;
+
+	CurShield = FMath::FInterpTo(CurShield,TargetShield,DeltaTime,2.f);
+
+	if(CurShield >= TargetShield)
+	{
+		TargetShield = 0.f;
+		bShieldRecovery = false;
+	}
+}
+
 void AShooter::MoveForward(float Value)
 {
 	if(Value == 0.f) return;
@@ -442,6 +472,10 @@ void AShooter::Tick(float DeltaTime)
 	CalculateCrosshairSpread(DeltaTime);
 	// 궁극기 게이지
 	TickUltGauge(DeltaTime);
+	// 체력 회복
+	TickHealthRecovery(DeltaTime);
+	// 쉴드 회복
+	TickShieldRecovery(DeltaTime);
 }
 
 // Called to bind functionality to input
@@ -478,5 +512,25 @@ void AShooter::SpawnVentEmitter()
 
 	FTransform LeftVentEmitterTransform = LeftVentEmitterSocket->GetSocketTransform(GetMesh());
 	UGameplayStatics::SpawnEmitterAtLocation(GetWorld(),VentParticleSystem,LeftVentEmitterTransform);	
+}
+
+void AShooter::IncrementHealthStepByStep(float Value)
+{
+	bHealthRecovery = true;
+	TargetHealth = CurHealth + Value;
+	if(TargetHealth >= MaxHealth)
+	{
+		TargetHealth = MaxHealth;
+	}
+}
+
+void AShooter::IncrementShieldStepByStep(float Value)
+{
+	bShieldRecovery = true;
+	TargetShield = CurShield + Value;
+	if(TargetShield >= MaxShield)
+	{
+		TargetShield = MaxShield;
+	}
 }
 
