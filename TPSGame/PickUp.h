@@ -10,23 +10,13 @@
 #include "Engine/DataTable.h"
 #include "PickUp.generated.h"
 
-UENUM(BlueprintType)
-enum class EPickUpType : uint8
-{
-	EPT_HealthPotion UMETA(DisplayNAme = "HealthPotion"),
-	EPT_ShieldPotion UMETA(DisplayNAme = "ShieldPotion"),
-	EPT_BothPotion UMETA(DisplayNAme = "BothPotion"),
-	
-	EMT_MAX UMETA(DisplayNAme = "DefaultMax")
-};
-
 USTRUCT(BlueprintType)
 struct FPickUpDataTable : public FTableRowBase
 {
 	GENERATED_BODY()
 
 	UPROPERTY(EditAnywhere,BlueprintReadWrite)
-	EPickUpType PickUpType;
+	EItemType ItemType;
 
 	UPROPERTY(EditAnywhere,BlueprintReadWrite)
 	UMaterialInstance* MaterialInstance;
@@ -36,6 +26,9 @@ struct FPickUpDataTable : public FTableRowBase
 
 	UPROPERTY(EditAnywhere,BlueprintReadWrite)
 	FName PickUpName;
+
+	UPROPERTY(EditAnywhere,BlueprintReadWrite)
+	UTexture* ItemImage;
 };
 /**
  * 
@@ -47,6 +40,7 @@ class TPSGAME_API APickUp : public AItem
 public:
 	APickUp();
 
+	virtual void TransformItemState(EItemState State) override;
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -63,15 +57,12 @@ public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 private:
-	// 픽업 타입
-	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="PickUp",meta=(AllowPrivateAccess="true"))
-	EPickUpType PickUpType;
 	// 데이터 테이블
 	UPROPERTY(EditDefaultsOnly,BlueprintReadOnly,Category="PickUp",meta=(AllowPrivateAccess="true"))
 	UDataTable* PickUpDataTable;
 	// 데이터 테이블 Row이름
 	UPROPERTY(EditAnywhere,BlueprintReadOnly,Category="PickUp",meta=(AllowPrivateAccess="true"))
-	FName DataTableRowName;
+	TArray<FName> DataTableRowNames;
 	// 머티리얼 인스턴스
 	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="PickUp",meta=(AllowPrivateAccess="true"))
 	UMaterialInstance* MaterialInstance;

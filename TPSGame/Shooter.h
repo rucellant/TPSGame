@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Projectile.h"
+#include "ShooterController.h"
 #include "Camera/CameraComponent.h"
 #include "Engine/DataTable.h"
 #include "GameFramework/Character.h"
@@ -55,6 +56,8 @@ protected:
 	// 서서히 체력 회복
 	void TickHealthRecovery(float DeltaTime);
 	void TickShieldRecovery(float DeltaTime);
+	// 캐릭터가 작동할 수 있는 지 체크
+	bool CanWork();
 protected: // 입력
 	void MoveForward(float Value);
 	void MoveRight(float Value);
@@ -77,7 +80,12 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	void SpawnVentEmitter();
+
+	// 아이템을 인벤토리에 넣는 함수
+	bool EquipItem(AItem* Item, bool& OutShouldDestroy);
 private:
+	// 컨트롤러
+	AShooterController* ShooterController;
 	// 조준상태
 	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="Shooter",meta=(AllowPrivateAccess="true"))
 	bool bAiming;
@@ -201,6 +209,13 @@ private:
 	UParticleSystemComponent* BodyHologramLeftoverParticleSystemComponent;
 	UPROPERTY(EditDefaultsOnly,BlueprintReadOnly,Category="Shooter",meta=(AllowPrivateAccess="true"))
 	UParticleSystem* VentParticleSystem;
+	// 인벤토리
+	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="Shooter",meta=(AllowPrivateAccess="true"))
+	TArray<AItem*> Inventory;
+	const int32 INVENTORY_CAPACITY = 6;
+	// 인벤토리에 아이템이 몇개 있는 지 알려주는 변수
+	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="Shooter",meta=(AllowPrivateAccess="true"))
+	int32 InventoryItemNum;
 public:
 	FORCEINLINE bool GetAiming() const { return bAiming; }
 	FORCEINLINE FVector2D GetCrosshairOffset() const { return CrosshairOffset; }

@@ -65,6 +65,11 @@ void AShooter::BeginPlay()
 	bShieldRecovery = false;
 	// 궁극기 게이지
 	CurUltGauge = 0.f;
+	// 컨트롤러
+	ShooterController = Cast<AShooterController>(GetController());
+	// 인벤토리
+	for(int32 i=0;i<INVENTORY_CAPACITY;i++) Inventory.Add(nullptr);
+	InventoryItemNum = 0;
 }
 
 void AShooter::TransformByAiming(bool bInput)
@@ -360,9 +365,21 @@ void AShooter::TickShieldRecovery(float DeltaTime)
 	}
 }
 
+bool AShooter::CanWork()
+{
+	if(ShooterController->GetPause())
+	{
+		return false;
+	}
+	else
+	{
+		return true;
+	}
+}
+
 void AShooter::MoveForward(float Value)
 {
-	if(Value == 0.f) return;
+	if(Value == 0.f || !CanWork()) return;
 
 	if(bAiming)
 	{
@@ -382,7 +399,7 @@ void AShooter::MoveForward(float Value)
 
 void AShooter::MoveRight(float Value)
 {
-	if(Value == 0.f) return;
+	if(Value == 0.f || !CanWork()) return;
 
 	if(bAiming)
 	{
@@ -402,16 +419,22 @@ void AShooter::MoveRight(float Value)
 
 void AShooter::LookRight(float Value)
 {
+	if(Value == 0.f || !CanWork()) return;
+	
 	AddControllerYawInput(BaseLookRightRate * Value * GetWorld()->GetDeltaSeconds());
 }
 
 void AShooter::LookUp(float Value)
 {
+	if(Value == 0.f || !CanWork()) return;
+	
 	AddControllerPitchInput(BaseLookUpRate * Value * GetWorld()->GetDeltaSeconds());
 }
 
 void AShooter::FireButtonPressed()
 {
+	if(!CanWork()) return;
+	
 	bFireButtonPressed = true;
 
 	if(bAiming)
@@ -427,6 +450,8 @@ void AShooter::FireButtonReleased()
 
 void AShooter::AimingButtonPressed()
 {
+	if(!CanWork()) return;
+	
 	bAimingButtonPressed = true;
 
 	TransformByAiming(!bAiming);
@@ -439,6 +464,8 @@ void AShooter::AimingButtonReleased()
 
 void AShooter::UltButtonPressed()
 {
+	if(!CanWork()) return;
+	
 	bUltButtonPressed = true;
 
 	ActivateUlt();
@@ -451,6 +478,8 @@ void AShooter::UltButtonReleased()
 
 void AShooter::Jump()
 {
+	if(!CanWork()) return;
+	
 	Super::Jump();
 
 	TransformByAiming(false);
@@ -512,6 +541,40 @@ void AShooter::SpawnVentEmitter()
 
 	FTransform LeftVentEmitterTransform = LeftVentEmitterSocket->GetSocketTransform(GetMesh());
 	UGameplayStatics::SpawnEmitterAtLocation(GetWorld(),VentParticleSystem,LeftVentEmitterTransform);	
+}
+
+bool AShooter::EquipItem(AItem* Item, bool& OutShouldDestroy)
+{
+	if((InventoryItemNum >= INVENTORY_CAPACITY) || (Item == nullptr)) return false;
+
+	// 1. 먼저 동일한 아이템이 인벤토리에 있는 지 확인
+	for(int32 i=0;i<INVENTORY_CAPACITY;i++)
+	{
+		if((Inventory[i] != nullptr) && (Inventory[i]->GetItemType() == Item->GetItemType()))
+		{
+			Inventory[i]->IncrementItemCount(1);
+			
+			OutShouldDestroy = true;
+			return true;
+		}
+	}
+	
+	for(int32 i=0;i<INVENTORY_CAPACITY;i++)
+	{
+		if(Inventory[i] == nullptr)
+		{
+			Inventory[i] = Item;
+			InventoryItemNum += 1;
+			
+			// 여기서 위젯과 상호작용하는 함수 호출
+			ShooterController->InventoryWidgetUpdate(i,Inventory[i]->GetItemImage(),Inventory[i]->GetItemCount());
+			
+			OutShouldDestroy = false;
+			return true;
+		}
+	}
+
+	return false;
 }
 
 void AShooter::IncrementHealthStepByStep(float Value)

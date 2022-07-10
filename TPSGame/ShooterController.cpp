@@ -2,11 +2,15 @@
 
 
 #include "ShooterController.h"
-
 #include "Blueprint/UserWidget.h"
 #include "Kismet/GameplayStatics.h"
 
 AShooterController::AShooterController()
+{
+	
+}
+
+void AShooterController::InventoryWidgetUpdate_Implementation(int32 Index, UTexture* ItemImage, int32 ItemCount)
 {
 	
 }
@@ -34,7 +38,7 @@ void AShooterController::BeginPlay()
 			DynamicHUDOverlay->SetVisibility(ESlateVisibility::Visible);
 		}
 	}
-
+	
 	if(InventoryHUDOverlayClass)
 	{
 		InventoryHUDOverlay = CreateWidget(this,InventoryHUDOverlayClass);
@@ -83,14 +87,15 @@ void AShooterController::ShowInventory_Implementation()
 	}
 }
 
+
 void AShooterController::InventoryButtonPressed()
 {
-	bInventoryButtonPressed = true;
+	bPauseButtonPressed = true;
 
 	TogglePauseGame();
 }
 
 void AShooterController::InventoryButtonReleased()
 {
-	bInventoryButtonPressed = false;
+	bPauseButtonPressed = false;
 }

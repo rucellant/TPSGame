@@ -21,23 +21,49 @@ APickUp::APickUp()
 	PickUpNameWidget->SetupAttachment(GetRootComponent());
 }
 
+void APickUp::TransformItemState(EItemState State)
+{
+	Super::TransformItemState(State);
+
+	if(State == EItemState::EIS_Inventory)
+	{
+		SphereBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		PickUpMesh->SetVisibility(false);
+		PointLight->SetVisibility(false);
+		PickUpNameWidget->SetVisibility(false);
+	}
+
+	else if(State == EItemState::EIS_Used)
+	{
+		
+	}
+
+	else if(State == EItemState::EIS_PickUp)
+	{
+		
+	}
+}
+
 void APickUp::BeginPlay()
 {
 	Super::BeginPlay();
 
 	if(PickUpDataTable)
 	{
-		FPickUpDataTable* PickUpDataTableRow = PickUpDataTable->FindRow<FPickUpDataTable>(DataTableRowName, TEXT(""));
+		int32 DataTableRowIndex = FMath::RandRange(0,DataTableRowNames.Num() - 1);
+		FPickUpDataTable* PickUpDataTableRow = PickUpDataTable->FindRow<FPickUpDataTable>(DataTableRowNames[DataTableRowIndex], TEXT(""));
 
 		if(PickUpDataTableRow)
 		{
-			PickUpType = PickUpDataTableRow->PickUpType;
+			ItemType = PickUpDataTableRow->ItemType;
 
 			MaterialInstance = PickUpDataTableRow->MaterialInstance;
 
 			PointLightColor = PickUpDataTableRow->PointLightColor;
 
 			PickUpName = PickUpDataTableRow->PickUpName;
+
+			ItemImage = PickUpDataTableRow->ItemImage;
 		}
 	}
 
@@ -60,23 +86,18 @@ void APickUp::SphereBoxBeginOverlap(UPrimitiveComponent* OverlappedComponent, AA
 	AShooter* Shooter = Cast<AShooter>(OtherActor);
 	if(Shooter == nullptr) return;
 
-	switch (PickUpType)
+	bool bShouldDestroy;
+	if(Shooter->EquipItem(this,bShouldDestroy))
 	{
-	case EPickUpType::EPT_HealthPotion:
-		Shooter->IncrementHealthStepByStep(IncrementRate);
-		break;
-	case EPickUpType::EPT_ShieldPotion:
-		Shooter->IncrementShieldStepByStep(IncrementRate);
-		break;
-	case EPickUpType::EPT_BothPotion:
-		Shooter->IncrementHealth(IncrementRate);
-		Shooter->IncrementShield(IncrementRate);
-		break;
-	default:
-		break;
+		if(bShouldDestroy)
+		{
+			Destroy();
+		}
+		else
+		{
+			TransformItemState(EItemState::EIS_Inventory);	
+		}
 	}
-	
-	Destroy();
 }
 
 void APickUp::Tick(float DeltaTime)

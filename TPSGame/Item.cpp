@@ -8,14 +8,21 @@ AItem::AItem()
 {
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
+}
 
+void AItem::TransformItemState(EItemState State)
+{
+	ItemState = State;
 }
 
 // Called when the game starts or when spawned
 void AItem::BeginPlay()
 {
 	Super::BeginPlay();
-	
+
+	ItemState = EItemState::EIS_PickUp;
+
+	ItemCount = 1;
 }
 
 // Called every frame
